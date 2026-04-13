@@ -5,9 +5,10 @@ import "@fontsource/geist-mono/500.css";
 import "@fontsource/geist-mono/700.css";
 
 import { ModeWatcher } from "mode-watcher";
-import { animate } from "motion";
 import { prefersReducedMotion } from "svelte/motion";
-import { beforeNavigate, goto, preloadData } from "$app/navigation";
+import { cubicOut } from "svelte/easing";
+import { fly } from "svelte/transition";
+import { beforeNavigate, goto } from "$app/navigation";
 import { page } from "$app/state";
 import { swipeNavigate } from "$lib/actions/swipe-navigation";
 import favicon from "$lib/assets/favicon.svg";
@@ -16,32 +17,24 @@ import { Tabs, TabsList, TabsTrigger } from "$lib/components/ui/tabs";
 import { getPageIndex, getSiblingHref, navPages } from "$lib/data/portfolio";
 
 let { children } = $props();
-let routePane = $state<HTMLElement | null>(null);
 let transitionDirection = $state(0);
 let navValue = $state(page.url.pathname);
-const warmedRoutes = new Set<string>();
-
-async function warmRoute(href?: string) {
-	if (!href || warmedRoutes.has(href)) return;
-
-	warmedRoutes.add(href);
-
-	try {
-		await preloadData(href);
-	} catch {
-		warmedRoutes.delete(href);
-	}
-}
 
 const routeLabel = $derived(
 	navPages.find((entry) => entry.href === page.url.pathname)?.label ?? "Home",
 );
+const introOffset = $derived.by(() => {
+	if (prefersReducedMotion.current || transitionDirection === 0) return 0;
+	return transitionDirection > 0 ? 56 : -56;
+});
+const outroOffset = $derived.by(() => {
+	if (prefersReducedMotion.current || transitionDirection === 0) return 0;
+	return transitionDirection > 0 ? -56 : 56;
+});
 const swipeOptions = $derived({
 	enabled: true,
 	previousHref: getSiblingHref(page.url.pathname, -1),
 	nextHref: getSiblingHref(page.url.pathname, 1),
-	reducedMotion: prefersReducedMotion.current,
-	onWarmRoute: warmRoute,
 	onNavigate: async (href: string) => {
 		await goto(href, { keepFocus: true });
 	},
@@ -56,14 +49,6 @@ $effect(() => {
 	goto(navValue, { keepFocus: true });
 });
 
-$effect(() => {
-	const previousHref = getSiblingHref(page.url.pathname, -1);
-	const nextHref = getSiblingHref(page.url.pathname, 1);
-
-	void warmRoute(previousHref);
-	void warmRoute(nextHref);
-});
-
 beforeNavigate((navigation) => {
 	const targetPath = navigation.to?.url.pathname;
 
@@ -74,37 +59,6 @@ beforeNavigate((navigation) => {
 
 	transitionDirection =
 		getPageIndex(targetPath) > getPageIndex(page.url.pathname) ? 1 : -1;
-});
-
-$effect(() => {
-	page.url.pathname;
-
-	if (!routePane) return;
-
-	const offset = prefersReducedMotion.current
-		? 0
-		: transitionDirection > 0
-			? 42
-			: transitionDirection < 0
-				? -42
-				: 0;
-	const opacity = prefersReducedMotion.current ? 1 : 0;
-
-	routePane.style.opacity = `${opacity}`;
-	routePane.style.transform = `translate3d(${offset}px, 0, 0)`;
-
-	const controls = animate(
-		routePane,
-		{ opacity: 1, x: 0 },
-		{
-			duration: prefersReducedMotion.current ? 0.01 : 0.52,
-			ease: [0.22, 1, 0.36, 1],
-		},
-	);
-
-	return () => {
-		controls.stop();
-	};
 });
 </script>
 
@@ -158,9 +112,23 @@ $effect(() => {
 			<p class="hidden sm:block">Built for mobile-first review</p>
 		</div>
 
-		<main class="relative flex-1" use:swipeNavigate={swipeOptions}>
+		<main class="relative flex-1 overflow-hidden" use:swipeNavigate={swipeOptions}>
 			{#key page.url.pathname}
-				<div bind:this={routePane} class="min-h-full px-5 py-6 sm:px-7 sm:py-8 lg:px-8 lg:py-10">
+				<div
+					class="min-h-full px-5 py-6 sm:px-7 sm:py-8 lg:px-8 lg:py-10"
+					in:fly={{
+						x: introOffset,
+						duration: prefersReducedMotion.current ? 0 : 280,
+						opacity: prefersReducedMotion.current ? 1 : 0.12,
+						easing: cubicOut,
+					}}
+					out:fly={{
+						x: outroOffset,
+						duration: prefersReducedMotion.current ? 0 : 220,
+						opacity: prefersReducedMotion.current ? 1 : 0.12,
+						easing: cubicOut,
+					}}
+				>
 					{@render children()}
 				</div>
 			{/key}
