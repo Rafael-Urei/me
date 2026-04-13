@@ -1,5 +1,6 @@
 <script lang="ts">
 import ArrowUpRight from "lucide-svelte/icons/arrow-up-right";
+import { m } from "$lib/paraglide/messages";
 import { interactiveCard } from "$lib/actions/interactive-card";
 import { revealOnView } from "$lib/actions/reveal";
 import { Badge } from "$lib/components/ui/badge";
@@ -33,7 +34,7 @@ let {
 >
 	<div class="relative overflow-hidden rounded-[1.5rem] p-4 border border-border bg-(--project-background)">
 		<img
-			alt={`${project.title} cover art`}
+			alt={m.app_project_cover_alt({ title: project.title })}
 			class="aspect-16/11 h-full w-full object-contain transition-transform duration-500 group-hover:scale-[1.03]"
 			src={project.coverImage}
 		/>

@@ -1,27 +1,62 @@
 <script lang="ts">
+import { ModeWatcher } from "mode-watcher";
+import { cubicOut } from "svelte/easing";
+import { prefersReducedMotion } from "svelte/motion";
+import { fly } from "svelte/transition";
+import { beforeNavigate, goto } from "$app/navigation";
+import { resolve } from "$app/paths";
+import { page } from "$app/state";
+import type { Pathname } from "$app/types";
+import { m } from "$lib/paraglide/messages";
+import type { Locale } from "$lib/paraglide/runtime";
+import {
+	deLocalizeUrl,
+	getLocale,
+	locales,
+	localizeHref,
+} from "$lib/paraglide/runtime";
 import "./layout.css";
 import "@fontsource/geist-mono/400.css";
 import "@fontsource/geist-mono/500.css";
 import "@fontsource/geist-mono/700.css";
-
-import { ModeWatcher } from "mode-watcher";
-import { prefersReducedMotion } from "svelte/motion";
-import { cubicOut } from "svelte/easing";
-import { fly } from "svelte/transition";
-import { beforeNavigate, goto } from "$app/navigation";
-import { page } from "$app/state";
 import { swipeNavigate } from "$lib/actions/swipe-navigation";
 import favicon from "$lib/assets/favicon.svg";
 import ModeToggle from "$lib/components/mode-toggle.svelte";
 import { Tabs, TabsList, TabsTrigger } from "$lib/components/ui/tabs";
-import { getPageIndex, getSiblingHref, navPages } from "$lib/data/portfolio";
+import { getNavPages, getPageIndex, getSiblingHref } from "$lib/data/portfolio";
 
 let { children } = $props();
 let transitionDirection = $state(0);
-let navValue = $state(page.url.pathname);
+let navValue = $state("/");
+let localeValue = $state<Locale>("pt-BR");
 
+const canonicalPath = $derived.by(
+	() => deLocalizeUrl(page.url).pathname as Pathname,
+);
+const localizedNavPages = $derived.by(() => {
+	page.url.pathname;
+	return getNavPages();
+});
+const currentLocale = $derived.by(() => {
+	page.url.pathname;
+	return getLocale();
+});
+const ui = $derived.by(() => {
+	page.url.pathname;
+	return {
+		metaTitle: m.app_meta_title(),
+		metaDescription: m.app_meta_description(),
+		brand: m.app_brand(),
+		homeLabel: m.app_nav_home(),
+		primaryNavigationAria: m.app_nav_primary_aria(),
+		swipeHint: m.app_swipe_hint(),
+		mobileReviewHint: m.app_mobile_review_hint(),
+		languageSwitcherAria: m.app_language_switcher_aria(),
+	};
+});
 const routeLabel = $derived(
-	navPages.find((entry) => entry.href === page.url.pathname)?.label ?? "Home",
+	localizedNavPages.find((entry) => entry.href === canonicalPath)?.label ??
+		ui.homeLabel,
 );
 const introOffset = $derived.by(() => {
 	if (prefersReducedMotion.current || transitionDirection === 0) return 0;
@@ -31,44 +66,72 @@ const outroOffset = $derived.by(() => {
 	if (prefersReducedMotion.current || transitionDirection === 0) return 0;
 	return transitionDirection > 0 ? -56 : 56;
 });
+
+function localizeInternalPath(path: string, locale?: Locale) {
+	return resolve(
+		localizeHref(path, locale ? { locale } : undefined) as Pathname,
+	);
+}
+
+function getLocaleHref(locale: Locale) {
+	return localizeInternalPath(canonicalPath, locale);
+}
+
 const swipeOptions = $derived({
 	enabled: true,
-	previousHref: getSiblingHref(page.url.pathname, -1),
-	nextHref: getSiblingHref(page.url.pathname, 1),
+	previousHref: (() => {
+		const sibling = getSiblingHref(canonicalPath, -1);
+		return sibling ? localizeInternalPath(sibling) : undefined;
+	})(),
+	nextHref: (() => {
+		const sibling = getSiblingHref(canonicalPath, 1);
+		return sibling ? localizeInternalPath(sibling) : undefined;
+	})(),
 	onNavigate: async (href: string) => {
 		await goto(href, { keepFocus: true });
 	},
 });
 
 $effect(() => {
-	navValue = page.url.pathname;
+	navValue = canonicalPath;
 });
 
 $effect(() => {
-	if (!navValue || navValue === page.url.pathname) return;
-	goto(navValue, { keepFocus: true });
+	if (!navValue || navValue === canonicalPath) return;
+	goto(localizeInternalPath(navValue), { keepFocus: true });
+});
+
+$effect(() => {
+	localeValue = currentLocale;
+});
+
+$effect(() => {
+	if (!localeValue || localeValue === currentLocale) return;
+	goto(getLocaleHref(localeValue), { keepFocus: true });
 });
 
 beforeNavigate((navigation) => {
-	const targetPath = navigation.to?.url.pathname;
+	const targetUrl = navigation.to?.url;
+	if (!targetUrl) {
+		transitionDirection = 0;
+		return;
+	}
 
-	if (!targetPath || targetPath === page.url.pathname) {
+	const targetPath = deLocalizeUrl(targetUrl).pathname;
+	if (targetPath === canonicalPath) {
 		transitionDirection = 0;
 		return;
 	}
 
 	transitionDirection =
-		getPageIndex(targetPath) > getPageIndex(page.url.pathname) ? 1 : -1;
+		getPageIndex(targetPath) > getPageIndex(canonicalPath) ? 1 : -1;
 });
 </script>
 
 <svelte:head>
 	<link rel="icon" href={favicon} />
-	<title>Portfolio</title>
-	<meta
-		content="A mobile-first portfolio shell built with SvelteKit, shadcn-svelte structure, and motion-driven page navigation."
-		name="description"
-	/>
+	<title>{ui.metaTitle}</title>
+	<meta content={ui.metaDescription} name="description" />
 </svelte:head>
 
 <ModeWatcher />
@@ -83,22 +146,24 @@ beforeNavigate((navigation) => {
 		<header class="flex flex-wrap items-center justify-between gap-4 border-b border-border px-5 py-4 sm:px-7 lg:px-8">
 			<div class="grid gap-1">
 				<p class="text-[0.64rem] uppercase tracking-[0.32em] text-(--foreground-subtle)">
-					Portfolio
+					{ui.brand}
 				</p>
 				<p class="text-sm uppercase tracking-[0.18em] text-foreground">{routeLabel}</p>
 			</div>
 
 			<div class="flex items-center gap-2">
-				<Tabs aria-label="Primary" bind:value={navValue} class="gap-0">
-					<TabsList
-						class="h-auto rounded-full border border-border bg-(--surface-1) p-1"
-					>
-						{#each navPages as item (item.href)}
-							<TabsTrigger
-								value={item.href}
-							>
-								{item.label}
-							</TabsTrigger>
+				<Tabs aria-label={ui.primaryNavigationAria} bind:value={navValue} class="gap-0">
+					<TabsList class="h-auto border border-border bg-(--surface-1) p-1">
+						{#each localizedNavPages as item (item.href)}
+							<TabsTrigger value={item.href}>{item.label}</TabsTrigger>
+						{/each}
+					</TabsList>
+				</Tabs>
+
+				<Tabs aria-label={ui.languageSwitcherAria} bind:value={localeValue} class="gap-0">
+					<TabsList class="h-auto border border-border bg-(--surface-1) p-1">
+						{#each locales as locale (locale)}
+							<TabsTrigger value={locale}>{locale.toUpperCase()}</TabsTrigger>
 						{/each}
 					</TabsList>
 				</Tabs>
@@ -108,8 +173,8 @@ beforeNavigate((navigation) => {
 		</header>
 
 		<div class="flex items-center justify-between gap-4 border-b border-border px-5 py-3 text-[0.64rem] uppercase tracking-[0.24em] text-(--foreground-subtle) sm:px-7 lg:px-8">
-			<p>Swipe between pages on touch devices</p>
-			<p class="hidden sm:block">Built for mobile-first review</p>
+			<p>{ui.swipeHint}</p>
+			<p class="hidden sm:block">{ui.mobileReviewHint}</p>
 		</div>
 
 		<main class="relative flex-1 overflow-hidden" use:swipeNavigate={swipeOptions}>
@@ -120,13 +185,13 @@ beforeNavigate((navigation) => {
 						x: introOffset,
 						duration: prefersReducedMotion.current ? 0 : 280,
 						opacity: prefersReducedMotion.current ? 1 : 0.12,
-						easing: cubicOut,
+						easing: cubicOut
 					}}
 					out:fly={{
 						x: outroOffset,
 						duration: prefersReducedMotion.current ? 0 : 220,
 						opacity: prefersReducedMotion.current ? 1 : 0.12,
-						easing: cubicOut,
+						easing: cubicOut
 					}}
 				>
 					{@render children()}

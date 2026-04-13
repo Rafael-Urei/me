@@ -1,30 +1,37 @@
 <script lang="ts">
+import type { Pathname } from '$app/types';
+import { resolve } from '$app/paths';
 import ArrowLeft from "lucide-svelte/icons/arrow-left";
+import { localizeHref } from "$lib/paraglide/runtime";
+import { m } from "$lib/paraglide/messages";
 import { prefersReducedMotion } from "svelte/motion";
 import ProjectCard from "$lib/components/project-card.svelte";
 import { buttonVariants } from "$lib/components/ui/button";
-import { projects } from "$lib/data/portfolio";
+import { getProjects } from "$lib/data/portfolio";
 import { cn } from "$lib/utils";
+
+const projects = getProjects();
+const homeHref = resolve(localizeHref('/') as Pathname);
 </script>
 
 <section class="grid gap-8">
 	<div class="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(16rem,20rem)] lg:items-end">
 		<div class="grid gap-4">
 			<h1 class="max-w-[12ch] text-[clamp(2.4rem,10vw,5rem)] leading-[0.92] font-medium uppercase tracking-[-0.08em] text-foreground">
-			  Selected projects
+				{m.app_projects_title()}
 			</h1>
 		</div>
 
 		<div class="grid gap-3 rounded-[2rem] border border-border bg-(--surface-1) p-5">
 			<p class="text-[0.64rem] uppercase tracking-[0.28em] text-(--foreground-subtle)">
-				Navigation
+				{m.app_projects_navigation()}
 			</p>
 			<p class="text-sm leading-7 text-(--foreground-muted)">
-				Swipe right to return home on touch devices, or use the visible route controls.
+				{m.app_projects_navigation_hint()}
 			</p>
-			<a class={buttonVariants({ variant: 'default', size: 'lg' })} href="/">
+			<a class={buttonVariants({ variant: 'default', size: 'lg' })} href={homeHref}>
 				<ArrowLeft class="size-4" />
-				Back home
+				{m.app_projects_back_home()}
 			</a>
 		</div>
 	</div>

@@ -1,15 +1,19 @@
 <script lang="ts">
+import type { Pathname } from '$app/types';
+import { resolve } from '$app/paths';
 import ArrowRight from "lucide-svelte/icons/arrow-right";
 import BriefcaseBusiness from "lucide-svelte/icons/briefcase-business";
 import Globe from "lucide-svelte/icons/globe";
 import Mail from "lucide-svelte/icons/mail";
 import Terminal from "lucide-svelte/icons/terminal";
+import { localizeHref } from "$lib/paraglide/runtime";
+import { m } from "$lib/paraglide/messages";
 import { prefersReducedMotion } from "svelte/motion";
 import { revealOnView } from "$lib/actions/reveal";
 import { Avatar, AvatarFallback, AvatarImage } from "$lib/components/ui/avatar";
 import { buttonVariants } from "$lib/components/ui/button";
 import { Separator } from "$lib/components/ui/separator";
-import { profile } from "$lib/data/portfolio";
+import { getProfile } from "$lib/data/portfolio";
 
 const socialIcons = {
 	terminal: Terminal,
@@ -17,6 +21,9 @@ const socialIcons = {
 	globe: Globe,
 	mail: Mail,
 } as const;
+
+const profile = getProfile();
+const projectsHref = resolve(localizeHref('/projects') as Pathname);
 </script>
 
 <section class="grid gap-8 lg:grid-cols-[minmax(0,1.15fr)_minmax(18rem,0.85fr)] lg:gap-12">
@@ -40,7 +47,7 @@ const socialIcons = {
 			<div class="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end sm:justify-between">
 				<div>
 					<p class="text-[0.66rem] uppercase tracking-[0.28em] text-(--foreground-subtle)">
-						Short profile
+						{m.app_home_short_profile()}
 					</p>
 					<Avatar size="lg" class="mt-3">
 						<AvatarImage alt={profile.name} src={profile.photo} />
@@ -51,8 +58,8 @@ const socialIcons = {
 					</p>
 				</div>
 
-				<a class={buttonVariants({ size: 'lg' })} href="/projects">
-					View projects
+				<a class={buttonVariants({ size: 'lg' })} href={projectsHref}>
+					{m.app_home_view_projects()}
 					<ArrowRight class="size-4" />
 				</a>
 			</div>
@@ -62,14 +69,14 @@ const socialIcons = {
 			<div class="grid gap-4 sm:grid-cols-3">
 				<div>
 					<p class="text-[0.64rem] uppercase tracking-[0.26em] text-(--foreground-subtle)">
-						Location
+						{m.app_home_location()}
 					</p>
 					<p class="mt-2 text-sm text-foreground">{profile.location}</p>
 				</div>
 
 				<div>
 					<p class="text-[0.64rem] uppercase tracking-[0.26em] text-(--foreground-subtle)">
-						Email
+						{m.app_home_email()}
 					</p>
 					<a class="mt-2 block text-sm text-foreground" href={`mailto:${profile.email}`}>
 						{profile.email}
@@ -78,9 +85,9 @@ const socialIcons = {
 
 				<div>
 					<p class="text-[0.64rem] uppercase tracking-[0.26em] text-(--foreground-subtle)">
-						Best on
+						{m.app_home_best_on()}
 					</p>
-					<p class="mt-2 text-sm text-foreground">Mobile, tablet, and recruiter screens</p>
+					<p class="mt-2 text-sm text-foreground">{m.app_home_best_on_value()}</p>
 				</div>
 			</div>
 		</div>
@@ -89,7 +96,7 @@ const socialIcons = {
 	<aside class="grid gap-5" use:revealOnView={{ delay: 0.16, y: 32, reducedMotion: prefersReducedMotion.current }}>
 		<div class="rounded-[2rem] border border-border bg-(--surface-1) p-5">
 			<p class="text-[0.66rem] uppercase tracking-[0.3em] text-(--foreground-subtle)">
-				Social links
+				{m.app_home_social_links()}
 			</p>
 
 			<div class="mt-4 grid gap-3">
