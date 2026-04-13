@@ -22,10 +22,6 @@ const socialIcons = {
 <section class="grid gap-8 lg:grid-cols-[minmax(0,1.15fr)_minmax(18rem,0.85fr)] lg:gap-12">
 	<div class="grid gap-8">
 		<div class="grid gap-6" use:revealOnView={{ reducedMotion: prefersReducedMotion.current }}>
-			<p class="text-[0.68rem] uppercase tracking-[0.34em] text-(--foreground-subtle)">
-				Editorial minimal portfolio / v1 shell
-			</p>
-
 			<div class="grid gap-4">
 				<h1 class="max-w-[12ch] text-[clamp(2.8rem,12vw,7rem)] leading-[0.9] font-medium uppercase tracking-[-0.08em] text-foreground">
 					{profile.name}
